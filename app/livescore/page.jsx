@@ -65,7 +65,7 @@ const Favorites = ({ selectedLeague, onLeagueSelect }) => (
             >
                 All Leagues
             </li>
-            {['Premier League', 'La Liga', 'Serie A', 'Bundesliga', 'Ligue 1'].map(league => (
+            {['England', 'Spain', 'Italy', 'Germany', 'France'].map(league => (
                 <li
                     key={league}
                     className={selectedLeague === league ? 'active' : ''}
@@ -128,7 +128,7 @@ const LiveAndUpcoming = ({ selectedLeague, selectedDate }) => {
 
     // Filtering logic (unchanged)
     const filteredFixtures = selectedLeague
-        ? fixtures.filter(fixture => fixture.league.name === selectedLeague)
+        ? fixtures.filter(fixture => fixture.league.country === selectedLeague)
         : fixtures; 
 
     const groupedFixtures = filteredFixtures.reduce((acc, fixture) => {
