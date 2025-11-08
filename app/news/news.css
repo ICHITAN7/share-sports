@@ -1,0 +1,147 @@
+/* --- NEW: News Page Styles (Full Liquid Glass) --- */
+
+.news-page {
+  /* This is your new class for top padding */
+  padding : 8rem 2rem 2rem 2rem;
+}
+
+.news-page-title {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 24px;
+    color: #FFFFFF;
+}
+
+.article-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+/* --- Article Card Style --- */
+/* Uses .widget for the base glass effect */
+.article-card {
+    padding: 0; /* Remove default padding */
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.article-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.2);
+}
+
+.article-card-image {
+    width: 100%;
+    height: 180px;
+    background-size: cover;
+    background-position: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.article-card-content {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1; /* Makes card content fill space */
+}
+
+.article-card-source {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #F9B233; /* Yellow accent */
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}
+
+.article-card-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: #FFFFFF;
+    margin: 0 0 12px 0;
+    flex-grow: 1; /* Pushes date to bottom */
+}
+
+.article-card-date {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* --- Article Detail Style --- */
+/* Uses .widget for the base glass effect */
+.article-detail {
+    max-width: 900px;
+    margin: 0 auto; /* Center the detail page */
+    padding: 24px 32px;
+}
+
+.article-back-button {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: #FFFFFF;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    margin-bottom: 24px;
+    transition: background 0.2s ease;
+}
+
+.article-back-button:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.article-detail-title {
+    font-size: 2.2rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: #FFFFFF;
+    margin-bottom: 16px;
+}
+
+.article-detail-byline {
+    display: flex;
+    gap: 16px;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.article-detail-image {
+    width: 100%;
+    height: auto;
+    border-radius: 12px;
+    margin-bottom: 24px;
+}
+
+.article-detail-description {
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 20px;
+}
+
+/* UPDATED: "Read More" link is now also a glass button */
+.article-detail-link {
+    display: inline-block;
+    background: rgba(249, 178, 51, 0.3); /* Transparent Yellow */
+    border: 1px solid rgba(249, 178, 51, 0.5);
+    color: #FFFFFF; /* White text */
+    text-decoration: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    margin-top: 20px;
+    transition: background-color 0.2s ease;
+}
+
+.article-detail-link:hover {
+    background: rgba(249, 178, 51, 0.5); /* Brighter on hover */
+}
