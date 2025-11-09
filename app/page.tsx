@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 
-export default function NewsPage() {
+export default function HomePage() {
 
   useEffect(() => {}, []);
 
@@ -13,6 +13,7 @@ export default function NewsPage() {
           autoPlay
           loop
           muted
+          
         />
       </div>
       <div className="video-home-banner">

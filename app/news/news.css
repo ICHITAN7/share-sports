@@ -1,8 +1,7 @@
-/* --- NEW: News Page Styles (Full Liquid Glass) --- */
-
 .news-page {
-  /* This is your new class for top padding */
-  padding : 8rem 2rem 2rem 2rem;
+  padding-top: 7rem; 
+  padding-left: 1rem;
+  padding-right: 1rem;
 }
 
 .news-page-title {
@@ -76,7 +75,7 @@
 .article-detail {
     max-width: 900px;
     margin: 0 auto; /* Center the detail page */
-    padding: 24px 32px;
+    padding: 7rem 2rem 2rem 2rem;
 }
 
 .article-back-button {
@@ -95,7 +94,11 @@
 .article-back-button:hover {
     background: rgba(255, 255, 255, 0.3);
 }
-
+.article-detail{
+    max-width: 800px;
+    margin: 0 auto; /* Center the detail page */
+    padding: 8rem 1rem 2rem 1rem;
+}
 .article-detail-title {
     font-size: 2.2rem;
     font-weight: 700;
@@ -128,13 +131,14 @@
     margin-bottom: 20px;
 }
 
-/* UPDATED: "Read More" link is now also a glass button */
+/* "Read More" link as glass button */
 .article-detail-link {
     display: inline-block;
     background: rgba(249, 178, 51, 0.3); /* Transparent Yellow */
     border: 1px solid rgba(249, 178, 51, 0.5);
     color: #FFFFFF; /* White text */
     text-decoration: none;
+
     padding: 12px 20px;
     border-radius: 8px;
     font-weight: 600;

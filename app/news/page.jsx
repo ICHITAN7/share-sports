@@ -1,18 +1,24 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import Image from 'next/image';
 import './news.css';
 
-const formatNewsDate = (dateString) => {
-    const date = new Date(dateString);
+// --- Helper: Format Date ---
+// (Converts timestamp like 1762661407444 to a readable format)
+const formatNewsDate = (timestamp) => {
+    const date = new Date(timestamp);
     return date.toLocaleDateString(undefined, {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
     });
 };
-const NEWS_API_KEY = 'pub_58ff41c09c7c4b3ba99b5b6f078e61c1';
-const API_URL = `https://newsdata.io/api/1/latest?apikey=${NEWS_API_KEY}&q=Football&language=en`;
+
+// --- API Config ---
+// IMPORTANT: Move API keys to .env.local files for production
+const API_URL = 'https://livescore6.p.rapidapi.com/news/v3/list?countryCode=US&locale=en&bet=true&competitionIds=65%2C77%2C60&participantIds=2810%2C3340%2C2773';
+const API_KEY = '76b6f9472bmshd6c9ad93820dc21p1afd75jsn16871004544f';
+const API_HOST = 'livescore6.p.rapidapi.com';
+
 
 // --- Main Page Component ---
 export default function NewsPage() {
@@ -26,19 +32,26 @@ export default function NewsPage() {
             setLoading(true);
             setError(null);
             try {
-                // We are fetching from the client, so we need to handle CORS.
-                // newsdata.io allows client-side requests.
-                const response = await fetch(API_URL);
+                const response = await fetch(API_URL, {
+                    method: 'GET',
+                    headers: {
+                        'x-rapidapi-key': API_KEY,
+                        'x-rapidapi-host': API_HOST
+                    }
+                });
+
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
+                
                 const data = await response.json();
                 
-                if (data.status === "success") {
-                    // Filter out articles without an image for a cleaner look
-                    setArticles(data.results.filter(article => article.image_url));
+                // Access data from the new structure: cmb.art.itms
+                if (data && data.cmb && data.cmb.art && data.cmb.art.itms) {
+                    // Filter out articles without a thumbnail for a cleaner look
+                    setArticles(data.cmb.art.itms.filter(article => article.tnUrl));
                 } else {
-                    throw new Error("Failed to fetch news data.");
+                    throw new Error("Failed to fetch news: Invalid data structure.");
                 }
             } catch (err) {
                 setError(err.message);
@@ -75,9 +88,9 @@ export default function NewsPage() {
             <div className="article-list">
                 {articles.map((article) => (
                     <ArticleCard 
-                        key={article.article_id} 
+                        key={article.id} 
                         article={article} 
-                        onClick={() => setSelectedArticle(article)}
+                        onClick={() => setSelectedArticle(article)} // Set selected article
                     />
                 ))}
             </div>
@@ -88,19 +101,24 @@ export default function NewsPage() {
 
 // --- Article Card Component ---
 function ArticleCard({ article, onClick }) {
+    // This is a CSS style object
+    const cardImageStyle = {
+        backgroundImage: `url(${article.tnUrl})`,
+    };
+
     return (
-      // onClick={onClick}
-        <div className="article-card widget" > 
-            {article.image_url && (
+        <div className="article-card widget" onClick={onClick}>
+            {article.tnUrl && (
                 <div 
                     className="article-card-image" 
-                    style={{ backgroundImage: `url(${article.image_url})` }}
+                    style={cardImageStyle} // Set the CSS style
+                    referrerPolicy="no-referrer" // Set the HTML attribute directly
                 ></div>
             )}
             <div className="article-card-content">
-                <span className="article-card-source">{article.source_name || "News"}</span>
-                <h3 className="article-card-title">{article.title}</h3>
-                <span className="article-card-date">{formatNewsDate(article.pubDate)}</span>
+                <span className="article-card-source">{article.oTtl || "News"}</span>
+                <h3 className="article-card-title">{article.ttl}</h3>
+                <span className="article-card-date">{formatNewsDate(article.pbAt)}</span>
             </div>
         </div>
     );
@@ -114,41 +132,34 @@ function ArticleDetail({ article, onBack }) {
                 &larr; Back to News
             </button>
             
-            <h1 className="article-detail-title">{article.title}</h1>
+            <h1 className="article-detail-title">{article.ttl}</h1>
             
             <div className="article-detail-byline">
-                <span>By: **{article.source_name || "Unknown Source"}**</span>
-                <span>{formatNewsDate(article.pubDate)}</span>
+                <span>By: **{article.oTTtl || "Unknown Source"}**</span>
+                <span>{formatNewsDate(article.pbAt)}</span>
             </div>
             
-            {article.image_url && (
-                <Image 
-                    src={article.image_url}
-                    alt={article.title}
-                    width={800}
-                    height={450}
+            {article.tnUrl && (
+                <img 
+                    src={article.tnUrl}
+                    alt={article.ttl}
                     className="article-detail-image"
-                    priority={true} // Load this image first
+                    referrerPolicy="no-referrer" // This might help load images
+                    onError={(e) => e.currentTarget.src = 'https://placehold.co/800x450/eee/ccc?text=Image+Not+Available'}
                 />
             )}
             
             <p className="article-detail-description">
-                {article.description || "No description available."}
+                {article.sum || "No description available."}
             </p>
-            
-            {article.content === "ONLY AVAILABLE IN PAID PLANS" && (
-                <p className="article-detail-description">
-                    Full content is only available on a paid plan.
-                </p>
-            )}
 
             <a 
-                href={article.link} 
+                href={article.cnUrl} // Use cnUrl (Content URL) for the link
                 target="_blank" 
                 rel="noopener noreferrer" 
                 className="article-detail-link"
             >
-                Read Full Story at {article.source_name}
+                Read Full Story at {article.oTtl}
             </a>
         </div>
     );

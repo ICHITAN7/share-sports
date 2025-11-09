@@ -1,268 +1,325 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import Image from 'next/image';
 import './livescore.css';
 
-// --- Helper Functions (Unchanged) ---
-const formatTime = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
-};
-const getStatusClass = (shortStatus) => {
-    switch (shortStatus) {
-        case 'FT': return 'status-ft';
-        case 'NS': return 'status-ns';
-        case '1H':
-        case '2H':
-        case 'ET': return 'status-live';
-        case 'LIVE': return 'status-live';
-        case 'HT': return 'status-ht';
-        default: return 'status-ns';
+// --- API Config ---
+// IMPORTANT: Move API keys to .env.local for production
+const API_KEY = '76b6f9472bmshd6c9ad93820dc21p1afd75jsn16871004544f';
+const API_HOST = 'livescore6.p.rapidapi.com';
+
+// --- Helper Functions ---
+function getTeamImage(team) {
+    if (!team || !team.Img) return 'https://placehold.co/40x40/555/FFF?text=?';
+    return `https://lsm-static-prod.livescore.com/medium/${team.Img}`;
+}
+
+function getTeamName(team) {
+    return team?.Nm || 'TBC';
+}
+
+function getMatchScore(event, teamKey) {
+    return event[teamKey] || '0';
+}
+
+function getMatchTime(event) {
+    if (event.Eps === 'NS') {
+        // Format YYYYMMDDHHMMSS to HH:MM
+        const s = event.Esd.toString();
+        const hour = s.substring(8, 10);
+        const minute = s.substring(10, 12);
+        return `${hour}:${minute}`;
     }
-};
+    if (event.Eps === 'FT') return 'FT';
+    return event.Eps; // e.g., "42'"
+}
 
-// NEW: Helper function to get today's date in YYYY-MM-DD format
-const getTodayDate = () => {
-    return new Date().toISOString().split('T')[0];
-};
+function getStatusClass(event) {
+    if (event.Eps === 'NS') return 'status-time';
+    if (event.Eps === 'FT') return 'status-finished';
+    if (event.Eps.includes("'")) return 'status-live'; // e.g., "42'"
+    return 'status-time';
+}
 
-// --- Placeholder Components ---
+// NEW: Helper to get today's date in YYYY-MM-DD format for the input
+function getTodayInputFormat() {
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const d = String(today.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
 
-// MODIFIED: MatchOfTheWeek component is REMOVED
+// NEW: Helper to convert YYYY-MM-DD to YYYYMMDD for the API
+function formatDateForApi(dateString) {
+    return dateString.replace(/-/g, '');
+}
 
-const LeagueTable = () => (
-    <div className="widget league-table">
-        <div className="widget-header">
-            <h3>Premier League</h3>
-        </div>
-        <table>
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>Team</th>
-                    <th>Pts</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr><td>1</td><td>Man City</td><td>73</td></tr>
-                <tr><td>2</td><td>Arsenal</td><td>71</td></tr>
-                <tr><td>3</td><td>Liverpool</td><td>69</td></tr>
-                <tr><td>4</td><td>Aston Villa</td><td>64</td></tr>
-                <tr><td>5</td><td>Tottenham</td><td>60</td></tr>
-            </tbody>
-        </table>
-        <a href="#" className="view-full-table">View Full Table</a>
-    </div>
-);
+// --- React Components ---
 
-const Favorites = ({ selectedLeague, onLeagueSelect }) => (
-    <div className="widget favorites">
-        <h3>Favorites</h3>
-        <ul>
-            <li
-                className={!selectedLeague ? 'active' : ''}
-                onClick={() => onLeagueSelect(null)}
-            >
-                All Leagues
-            </li>
-            {['England', 'Spain', 'Italy', 'Germany', 'France'].map(league => (
-                <li
-                    key={league}
-                    className={selectedLeague === league ? 'active' : ''}
-                    onClick={() => onLeagueSelect(league)}
-                >
-                    {league}
-                </li>
-            ))}
+/**
+ * Left Sidebar for Pinned Leagues
+ */
+const LeftSidebar = () => (
+    <aside className="left-sidebar-glass widget">
+        <h3 className='table-league-title'>Pinned Leagues</h3>
+        <ul className="pinned-leagues-list">
+            <li>Premier League</li>
+            <li>Ligue 1</li>
+            <li>Serie A</li>
+            <li>Eredivisie</li>
+            <li>LaLiga</li>
+            <li>Africa Cup of Nations</li>
+            <li>Euro</li>
+            <li>Champions League</li>
+            <li>Europa League</li>
         </ul>
-    </div>
+    </aside>
 );
 
-const OurSocial = () => (
-    <div className="widget social">
-        <h3>🔥 Our Social</h3>
-        <ul>
-            <li><span>Facebook</span><span>24K followers</span></li>
-            <li><span>Instagram</span><span>18K followers</span></li>
-            <li><span>Telegram</span><span>12K followers</span></li>
-        </ul>
-    </div>
-);
-
-
-// --- UPDATED: LiveAndUpcoming Component ---
-// MODIFIED: Now receives `selectedDate` as a prop
-const LiveAndUpcoming = ({ selectedLeague, selectedDate }) => {
-    const [fixtures, setFixtures] = useState([]);
+/**
+ * NEW: Reusable League Table Component
+ */
+const LeagueTableWidget = ({ title, Ccd, Scd }) => {
+    const [table, setTable] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // useEffect (data-fetching) is unchanged...
     useEffect(() => {
-        if (!selectedDate) return; 
-        const fetchFixtures = async () => {
+        const fetchTable = async () => {
             setLoading(true);
             setError(null);
             try {
-                const response = await fetch(`https://v3.football.api-sports.io/fixtures?date=${selectedDate}`, {
-                    "method": "GET",
-                    "headers": {
-                        "x-rapidapi-host": "v3.football.api-sports.io",
-                        "x-apisports-key": "a7dbe36a38d9a82ac403f2256c910a2b"
+                const response = await fetch(`https://livescore6.p.rapidapi.com/leagues/v2/get-table?Category=soccer&Ccd=${Ccd}&Scd=${Scd}`, {
+                    method: 'GET',
+                    headers: {
+                        'x-rapidapi-key': API_KEY,
+                        'x-rapidapi-host': API_HOST
                     }
                 });
-                if (!response.ok) throw new Error("Failed to fetch data.");
+                if (!response.ok) throw new Error(`Failed to fetch ${title} table`);
+                
                 const data = await response.json();
-                if (data.errors && Object.keys(data.errors).length > 0) {
-                    throw new Error(`API Error: ${Object.values(data.errors)[0]}`);
+                
+                // Find the first available table (e.g., "All")
+                if (data.LeagueTable && data.LeagueTable.L && data.LeagueTable.L[0] && data.LeagueTable.L[0].Tables) {
+                    setTable(data.LeagueTable.L[0].Tables[0]);
+                } else {
+                    throw new Error('Table data not found in response');
                 }
-                setFixtures(data.response || []);
             } catch (err) {
                 setError(err.message);
             } finally {
                 setLoading(false);
             }
         };
-        fetchFixtures();
-    }, [selectedDate]);
 
-    // Filtering logic (unchanged)
-    const filteredFixtures = selectedLeague
-        ? fixtures.filter(fixture => fixture.league.country === selectedLeague)
-        : fixtures; 
-
-    const groupedFixtures = filteredFixtures.reduce((acc, fixture) => {
-        const leagueName = fixture.league.name;
-        if (!acc[leagueName]) {
-            acc[leagueName] = { league: fixture.league, fixtures: [] };
-        }
-        acc[leagueName].fixtures.push(fixture);
-        return acc;
-    }, {});
-
-    // Render logic
-    if (loading) return <div className="live-upcoming-widget"><div className="loading-container glass">Loading scores...</div></div>;
-    if (error) return <div className="live-upcoming-widget"><div className="error-container glass">Error: {error}</div></div>;
+        fetchTable();
+    }, [title, Ccd, Scd]); // Re-fetch if props change
 
     return (
-        <div className="live-upcoming-widget"> 
-            <div className="widget-header">
-                <h3>{selectedLeague ? `🔥 ${selectedLeague}` : '🔥 Live & Upcoming'}</h3>
-            </div>
-
-            {filteredFixtures.length === 0 ? (
-                <div className="error-container glass">
-                    {selectedLeague 
-                        ? `No fixtures found for ${selectedLeague} on ${selectedDate}.`
-                        : `No fixtures found for ${selectedDate}.`}
-                </div>
-            ) : (
-                Object.values(groupedFixtures).map(({ league, fixtures }) => (
-                    // NEW: This league-group gets the yellow background
-                    <div key={league.id} className="league-group yellow-bg"> 
-                        <div className="league-header-new">
-                            <Image
-                                src={league.flag || 'https://placehold.co/24x24/eee/ccc?text=?'}
-                                alt={`${league.country} flag`}
-                                width={22} height={22}
-                                onError={(e) => e.currentTarget.src = 'https://placehold.co/22x22/eee/ccc?text=?'}
-                            />
-                            <span>{league.name}</span>
-                        </div>
-                        
-                        <div className="matches-grid">
-                            {fixtures.map((game) => (
-                                <div key={game.fixture.id} className="match-card-v3">
-                                    <div className="card-body">
-                                        <div className="team team-home">
-                                            <Image
-                                                src={game.teams.home.logo}
-                                                alt={`${game.teams.home.name} logo`}
-                                                className="team-logo"
-                                                width={40} height={40}
-                                                onError={(e) => e.currentTarget.src = 'https://placehold.co/40x40/eee/ccc?text=?'}
-                                            />
-                                            <span className="team-name">{game.teams.home.name}</span>
-                                        </div>
-
-                                        <div className="match-score">
-                                            {game.fixture.status.short === 'NS' ? (
-                                                <div className="match-time">{formatTime(game.fixture.date)}</div>
-                                            ) : (
-                                                <div className="score-line">
-                                                    {game.goals.home ?? 0}
-                                                    <span>-</span>
-                                                    {game.goals.away ?? 0}
-                                                </div>
-                                            )}
-                                        </div>
-                                        
-                                        <div className="team team-away">
-                                            <Image
-                                                src={game.teams.away.logo}
-                                                alt={`${game.teams.away.name} logo`}
-                                                className="team-logo"
-                                                width={40} height={40}
-                                                onError={(e) => e.currentTarget.src = 'https://placehold.co/40x40/eee/ccc?text=?'}
-                                            />
-                                            <span className="team-name">{game.teams.away.name}</span>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="card-footer">
-                                        {game.fixture.status.short === '1H' || game.fixture.status.short === '2H' ? 
-                                            `${game.fixture.status.elapsed}'` : 
-                                            game.fixture.status.long}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                ))
+        <React.Fragment> 
+            <h3 className="table-league-title">{title}</h3>
+            {loading && <p>Loading table...</p>}
+            {error && <p className="error-text">{error}</p>}
+            {table && (
+                <table className="league-table-glass">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th className="team-name-header">Team</th>
+                            <th>Pl</th>
+                            <th>GD</th>
+                            <th>Pts</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {table.team?.map((team) => (
+                            <tr key={team.Tid}>
+                                <td>{team.rnk}</td>
+                                <td className="team-cell">
+                                    {/* <img 
+                                        src={`https://lsm-static-prod.livescore.com/medium/${team.Img}`} 
+                                        alt={team.Tnm} 
+                                        className="table-team-logo"
+                                        onError={(e) => e.currentTarget.src = 'https://placehold.co/20x20/555/FFF?text=?'}
+                                    /> */}
+                                    {team.Tnm}
+                                </td>
+                                <td>{team.pld}</td>
+                                <td>{team.gd}</td>
+                                <td>{team.pts}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
             )}
-        </div>
+        </React.Fragment>
     );
 };
 
 
-// --- Main Page Component ---
-export default function LivescorePage() {
-    const [selectedLeague, setSelectedLeague] = useState(null);
-    // NEW: State for the selected date, initialized to today
-    const [selectedDate, setSelectedDate] = useState(getTodayDate()); 
+/**
+ * Right Sidebar for League Table
+ * MODIFIED: Uses the new reusable component
+ */
+const RightSidebar = () => {
+    return (
+        <aside className="right-sidebar-glass widget">
+            <LeagueTableWidget 
+                title="Premier League" 
+                Ccd="england" 
+                Scd="premier-league" 
+            />
+            
+            {/* Here is the second league table */}
+            <div style={{ marginTop: '24px' }}>
+                <LeagueTableWidget 
+                    title="La Liga" 
+                    Ccd="spain" 
+                    Scd="laliga" 
+                />
+            </div>
+            <div style={{ marginTop: '24px' }}>
+                <LeagueTableWidget 
+                    title="League 1" 
+                    Ccd="france" 
+                    Scd="ligue-1" 
+                />
+            </div>
+            {/* <div style={{ marginTop: '24px' }}>
+                <LeagueTableWidget 
+                    title="Bundesliga" 
+                    Ccd="germany" 
+                    Scd="bundesliga" 
+                />
+            </div> */}
+            <div style={{ marginTop: '24px' }}>
+                <LeagueTableWidget 
+                    title="Serie A" 
+                    Ccd="italy" 
+                    Scd="serie-a" 
+                />
+            </div>
+
+        </aside>
+    );
+};
+
+/**
+ * Main Content: Live Match List
+ */
+const MainContent = () => {
+    // MODIFIED: Added state for selectedDate
+    const [selectedDate, setSelectedDate] = useState(getTodayInputFormat());
+    const [stages, setStages] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    // MODIFIED: useEffect now fetches by date and depends on selectedDate
+    useEffect(() => {
+        if (!selectedDate) return; // Don't fetch if date is not set
+
+        const fetchMatches = async () => {
+            setLoading(true);
+            setError(null);
+            const apiDate = formatDateForApi(selectedDate); // Convert date for API
+            try {
+                // MODIFIED: Updated API endpoint
+                const response = await fetch(`https://livescore6.p.rapidapi.com/matches/v2/list-by-date?Category=soccer&Date=${apiDate}&Timezone=-7`, {
+                    method: 'GET',
+                    headers: {
+                        'x-rapidapi-key': API_KEY,
+                        'x-rapidapi-host': API_HOST
+                    }
+                });
+                if (!response.ok) throw new Error('Failed to fetch matches for selected date');
+                
+                const data = await response.json();
+                setStages(data.Stages || []);
+            } catch (err) {
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchMatches();
+    }, [selectedDate]); // Re-run when selectedDate changes
 
     return (
-        <div className="dashboard-layout">
-            <aside className="sidebar">
-                <Favorites 
-                    selectedLeague={selectedLeague} 
-                    onLeagueSelect={setSelectedLeague} 
+        <main className="main-content-glass">
+            {/* MODIFIED: Replaced tabs with date picker */}
+            <div className="main-content-header">
+                <input 
+                    type="date" 
+                    className="glass-datepicker"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
                 />
-                <OurSocial />
-            </aside>
-            <main className="main-content">
-                
-                {/* NEW: Date Picker Input */}
-                <div className="widget date-selector">
-                    <label htmlFor="date-picker">Select Date:</label>
-                    <input
-                        type="date"
-                        id="date-picker"
-                        value={selectedDate}
-                        onChange={(e) => setSelectedDate(e.target.value)}
-                    />
+            </div>
+            
+            {loading && <div className="loading-container glass">Loading matches...</div>}
+            {error && <div className="error-container glass">Error: {error}</div>}
+            
+            {!loading && stages.length === 0 && (
+                <div className="error-container glass">
+                    {/* MODIFIED: Updated "no matches" text */}
+                    No matches found for {selectedDate}.
                 </div>
+            )}
 
-                {/* MODIFIED: Pass selectedDate prop */}
-                <LiveAndUpcoming 
-                    selectedLeague={selectedLeague} 
-                    selectedDate={selectedDate}
-                />
+            {stages.map(stage => (
+                <div key={stage.Sid} className="league-group-glass">
+                    <div className="league-header-glass">
+                        <span>{stage.Cnm}: {stage.Snm}</span>
+                        <a href="#" className="standings-link">Standings {'>'}</a>
+                    </div>
+                    <div className="match-list">
+                        {stage.Events.map(event => (
+                            <div key={event.Eid} className="match-row">
+                                <div className="match-status">
+                                    <span className="star-icon">☆</span>
+                                    <span className={getStatusClass(event)}>{getMatchTime(event)}</span>
+                                </div>
+                                <div className="match-teams">
+                                    <div className="team-row">
+                                        <img src={getTeamImage(event.T1[0])} alt={getTeamName(event.T1[0])} className="team-logo-small" />
+                                        <span>{getTeamName(event.T1[0])}</span>
+                                    </div>
+                                    <div className="team-row">
+                                        <img src={getTeamImage(event.T2[0])} alt={getTeamName(event.T2[0])} className="team-logo-small" />
+                                        <span>{getTeamName(event.T2[0])}</span>
+                                    </div>
+                                </div>
+                                <div className="match-score">
+                                    <span>{getMatchScore(event, 'Tr1')}</span>
+                                    <span>{getMatchScore(event, 'Tr2')}</span>
+                                </div>
+                                <div className="match-links">
+                                    {event.Eps === 'NS' ? (
+                                        <span className="preview-tag">PREVIEW</span>
+                                    ) : (
+                                        <span className="match-icon-live">LIVE</span>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            ))}
+        </main>
+    );
+};
 
-            </main>
-            <aside className="right-sidebar">
-                <LeagueTable />
-            </aside>
+/**
+ * Main Page Component
+ */
+export default function LiveMatchesPage() {
+    return (
+        <div className="livescore-layout-glass">
+            <LeftSidebar />
+            <MainContent />
+            <RightSidebar />
         </div>
     );
 }

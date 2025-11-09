@@ -22,7 +22,7 @@ body {
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   color: #1e293b;
   line-height: 1.6;
-  background-color: #13293f;
+  background-color: #a8a1a1;
 }
 /* --- Header--- */
 .site-header {
@@ -191,11 +191,6 @@ body {
   }
 }
 /* End Header */
-/* News Style */
-.news-page {
-  margin: 0;
-  padding: 4rem 1rem 1rem 1rem;
-} 
 
 .container {
   padding: 0 auto;
@@ -259,6 +254,7 @@ footer {
   height: 100%;
   object-fit: contain;
   overflow-clip-margin: content-box;
+  overflow: hidden;
 }
 
 
@@ -456,16 +452,6 @@ footer {
   }
 }
 
-.news-sidebar {
-  background-color: var(--glass-bg);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-radius: 1.25rem;
-  border: var(--glass-border);
-  box-shadow: var(--glass-shadow);
-  padding: 1.5rem;
-  align-self: start; /* Makes it stop at its own content height */
-}
 
 /* --- Widget Container --- */
 .sidebar-widget:not(:last-child) {

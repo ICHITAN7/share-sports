@@ -4,7 +4,7 @@ import bg from "./asset/image/background.jpg"
 // @ts-ignore: allow importing global css without type declarations
 import "./globals.css";
 import type { ReactNode } from "react";
-export default function DefaultLayout({ children }: { children: ReactNode }) {
+export default function DefaultLayout({ children } : { children: ReactNode }) {
   return (
     <html lang="en">
       <body>
